@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    Linux / WSL build support for Bannerlord mods.
+    If FrameworkPathOverride is missing, run once to populate the NuGet cache:
+      mkdir /tmp/nb && echo '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net472</TargetFramework></PropertyGroup></Project>' > /tmp/nb/b.csproj && ~/.dotnet/dotnet restore /tmp/nb/b.csproj
+  -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <FrameworkPathOverride>$(HOME)/.nuget/packages/microsoft.netframework.referenceassemblies.net472/1.0.3/build/.NETFramework/v4.7.2/</FrameworkPathOverride>
+    <GameFolder>/mnt/d/SteamLibrary/steamapps/common/Mount &amp; Blade II Bannerlord</GameFolder>
+    <ReferencePath>$(ReferencePath);$(GameFolder)/bin/Win64_Shipping_Client/;$(GameFolder)/Modules/Bannerlord.Harmony/bin/Win64_Shipping_Client/</ReferencePath>
+  </PropertyGroup>
+</Project>
