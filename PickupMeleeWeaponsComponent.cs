@@ -4,8 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.ExceptionServices;
-using System.Security;
 using HarmonyLib;
 using TaleWorlds.Core;
 using TaleWorlds.Engine;
@@ -142,8 +140,6 @@ namespace PickupMeleeWeapons
 			return codes;
 		}
 
-		[HandleProcessCorruptedStateExceptions]
-		[SecurityCritical]
 		private static WeakGameEntity GetClosestPickableEntity(WeakGameEntity[] entities, Agent agent)
 		{
 			if (entities == null) return default(WeakGameEntity);
