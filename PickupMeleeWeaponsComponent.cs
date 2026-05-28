@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.ExceptionServices;
+using System.Security;
 using HarmonyLib;
 using TaleWorlds.Core;
 using TaleWorlds.Engine;
@@ -122,7 +124,32 @@ namespace PickupMeleeWeapons
 			return codes;
 		}
 
-		private static WeakGameEntity GetClosestPickableEntity(WeakGameEntity[] entities, Agent agent) => entities.MinBy(entity => agent.Position.DistanceSquared(entity.GlobalPosition));
+		[HandleProcessCorruptedStateExceptions]
+		[SecurityCritical]
+		private static WeakGameEntity GetClosestPickableEntity(WeakGameEntity[] entities, Agent agent)
+		{
+			if (entities == null) return default(WeakGameEntity);
+
+			WeakGameEntity best = default(WeakGameEntity);
+			float bestDistSq = float.MaxValue;
+
+			foreach (WeakGameEntity entity in entities)
+			{
+				if (!entity.IsValid) continue;
+				try
+				{
+					float distSq = agent.Position.DistanceSquared(entity.GlobalPosition);
+					if (distSq < bestDistSq)
+					{
+						bestDistSq = distSq;
+						best = entity;
+					}
+				}
+				catch (Exception) { }
+			}
+
+			return best;
+		}
 
 		private static bool IsMeleeWeapon(MissionWeapon weapon) => weapon.Item.PrimaryWeapon.IsMeleeWeapon;
 	}
