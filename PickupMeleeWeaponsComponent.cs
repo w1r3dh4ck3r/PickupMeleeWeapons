@@ -54,7 +54,7 @@ namespace PickupMeleeWeapons
 				{
 					if (method == AccessTools.Method(typeof(Agent), "GetTargetAgent"))
 					{
-						startIndex = i - 2;
+						startIndex = Math.Max(0, i - 2);
 					}
 					else if (method == AccessTools.Method(typeof(Agent), "GetLastTargetVisibilityState"))
 					{
@@ -64,7 +64,8 @@ namespace PickupMeleeWeapons
 			}
 
 			// Remove the checks for target agent.
-			codes.RemoveRange(startIndex, endIndex - startIndex + 1);
+			if (startIndex < endIndex)
+				codes.RemoveRange(startIndex, endIndex - startIndex + 1);
 
 			return codes;
 		}
@@ -110,13 +111,14 @@ namespace PickupMeleeWeapons
 			codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "IsMeleeWeapon", new Type[] { typeof(MissionWeapon) })));
 			codes.InsertRange(index, codesToInsert);
 
+			startIndex = -1; endIndex = -1;
 			for (int i = 0; i < codes.Count; i++)
 			{
 				if (codes[i].operand is MethodInfo method)
 				{
 					if (method == AccessTools.PropertyGetter(typeof(Vec3), "Length"))
 					{
-						startIndex = i - 3;
+						startIndex = Math.Max(0, i - 3);
 					}
 					else if (method == AccessTools.Method(typeof(Agent), "GetMaximumForwardUnlimitedSpeed"))
 					{
@@ -126,7 +128,8 @@ namespace PickupMeleeWeapons
 			}
 
 			// Remove the checks for target agent.
-			codes.RemoveRange(startIndex, endIndex - startIndex + 1);
+			if (startIndex >= 0 && endIndex > startIndex)
+				codes.RemoveRange(startIndex, endIndex - startIndex + 1);
 
 			for (int i = 0; i < codes.Count; i++)
 			{
