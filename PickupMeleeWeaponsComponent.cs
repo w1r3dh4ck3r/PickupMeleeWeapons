@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -16,12 +17,29 @@ namespace PickupMeleeWeapons
 	[HarmonyPatch(typeof(HumanAIComponent))]
 	public class PickupMeleeWeaponsComponent
 	{
+		private static readonly Stopwatch _clock = Stopwatch.StartNew();
+		private static readonly Dictionary<int, long> _lastScanMs = new Dictionary<int, long>();
+		private const long ScanCooldownMs = 500L;
+		private static Mission _lastMission;
+
 		[HarmonyPatch("DisablePickUpForAgentIfNeeded")]
 		public static void Postfix(ref bool ____disablePickUpForAgent, Agent ___Agent)
 		{
+			Mission mission = Mission.Current;
+			if (mission != _lastMission)
+			{
+				_lastScanMs.Clear();
+				_lastMission = mission;
+			}
+
 			if (!___Agent.HasMount && PickupMeleeWeaponsHelper.HasLostMeleeWeapon(___Agent))
 			{
+				int idx = ___Agent.Index;
+				long now = _clock.ElapsedMilliseconds;
+				if (_lastScanMs.TryGetValue(idx, out long last) && now - last < ScanCooldownMs)
+					return;
 				____disablePickUpForAgent = false;
+				_lastScanMs[idx] = now;
 			}
 		}
 
