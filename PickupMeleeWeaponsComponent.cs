@@ -45,102 +45,124 @@ namespace PickupMeleeWeapons
 		[HarmonyPatch("ItemPickupTick")]
 		private static IEnumerable<CodeInstruction> Transpiler1(IEnumerable<CodeInstruction> instructions)
 		{
-			List<CodeInstruction> codes = instructions.ToList();
-			int startIndex = 0, endIndex = 0;
-
-			for (int i = 0; i < codes.Count; i++)
+			var originalInstructions = instructions.ToList();
+			try
 			{
-				if (codes[i].operand is MethodInfo method)
+				List<CodeInstruction> codes = originalInstructions.ToList();
+				int startIndex = 0, endIndex = 0;
+
+				for (int i = 0; i < codes.Count; i++)
 				{
-					if (method == AccessTools.Method(typeof(Agent), "GetTargetAgent"))
+					if (codes[i].operand is MethodInfo method)
 					{
-						startIndex = Math.Max(0, i - 2);
-					}
-					else if (method == AccessTools.Method(typeof(Agent), "GetLastTargetVisibilityState"))
-					{
-						endIndex = i + 2;
+						if (method == AccessTools.Method(typeof(Agent), "GetTargetAgent"))
+						{
+							startIndex = Math.Max(0, i - 2);
+						}
+						else if (method == AccessTools.Method(typeof(Agent), "GetLastTargetVisibilityState"))
+						{
+							endIndex = i + 2;
+						}
 					}
 				}
+
+				// Remove the checks for target agent.
+				if (startIndex < endIndex)
+					codes.RemoveRange(startIndex, endIndex - startIndex + 1);
+
+				return codes;
 			}
-
-			// Remove the checks for target agent.
-			if (startIndex < endIndex)
-				codes.RemoveRange(startIndex, endIndex - startIndex + 1);
-
-			return codes;
+			catch (Exception ex)
+			{
+				System.IO.File.AppendAllText(
+					System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PMW_patch_error.txt"),
+					"\n[Transpiler1/ItemPickupTick]\n" + ex.ToString() + "\n");
+				return originalInstructions;
+			}
 		}
 
 		[HarmonyTranspiler]
 		[HarmonyPatch("SelectPickableItem")]
 		private static IEnumerable<CodeInstruction> Transpiler2(IEnumerable<CodeInstruction> instructions, ILGenerator il)
 		{
-			List<CodeInstruction> codes = instructions.ToList(), codesToInsert = new List<CodeInstruction>();
-			Label label = il.DefineLabel();
-			int index = 0, startIndex = 0, endIndex = 0;
-
-			for (int i = 0; i < codes.Count; i++)
+			var originalInstructions = instructions.ToList();
+			try
 			{
-				if (codes[i].operand is Type type && type == typeof(WeakGameEntity))
+				List<CodeInstruction> codes = originalInstructions.ToList(), codesToInsert = new List<CodeInstruction>();
+				Label label = il.DefineLabel();
+				int index = 0, startIndex = 0, endIndex = 0;
+
+				for (int i = 0; i < codes.Count; i++)
 				{
-					startIndex = i - 1;
-					endIndex = i;
-					index = i + 1;
-				}
-			}
-
-			// Get the closest pickable entity to the agent instead of the last pickable entity.
-			codesToInsert.Add(new CodeInstruction(OpCodes.Ldarg_0));
-			codesToInsert.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(AgentComponent), "Agent")));
-			codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "GetClosestPickableEntity", new Type[] { typeof(WeakGameEntity[]), typeof(Agent) })));
-			codes.InsertRange(index, codesToInsert);
-			codes.RemoveRange(startIndex, endIndex - startIndex + 1);
-
-			for (int i = 0; i < codes.Count; i++)
-			{
-				if (codes[i].operand is MethodInfo method && method == AccessTools.Method(typeof(SpawnedItemEntity), "IsQuiverAndNotEmpty"))
-				{
-					codes[i + 2].labels.Add(label);
-					index = i + 1;
-				}
-			}
-
-			// Make melee weapons pickable.
-			codesToInsert.Clear();
-			codesToInsert.Add(new CodeInstruction(OpCodes.Brtrue_S, label));
-			codesToInsert.Add(new CodeInstruction(OpCodes.Ldloca_S, 9));
-			codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "IsMeleeWeapon", new Type[] { typeof(MissionWeapon) })));
-			codes.InsertRange(index, codesToInsert);
-
-			startIndex = -1; endIndex = -1;
-			for (int i = 0; i < codes.Count; i++)
-			{
-				if (codes[i].operand is MethodInfo method)
-				{
-					if (method == AccessTools.PropertyGetter(typeof(Vec3), "Length"))
+					if (codes[i].operand is Type type && type == typeof(WeakGameEntity))
 					{
-						startIndex = Math.Max(0, i - 3);
-					}
-					else if (method == AccessTools.Method(typeof(Agent), "GetMaximumForwardUnlimitedSpeed"))
-					{
-						endIndex = i + 3;
+						startIndex = i - 1;
+						endIndex = i;
+						index = i + 1;
 					}
 				}
-			}
 
-			// Remove the checks for target agent.
-			if (startIndex >= 0 && endIndex > startIndex)
+				// Get the closest pickable entity to the agent instead of the last pickable entity.
+				codesToInsert.Add(new CodeInstruction(OpCodes.Ldarg_0));
+				codesToInsert.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(AgentComponent), "Agent")));
+				codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "GetClosestPickableEntity", new Type[] { typeof(WeakGameEntity[]), typeof(Agent) })));
+				codes.InsertRange(index, codesToInsert);
 				codes.RemoveRange(startIndex, endIndex - startIndex + 1);
 
-			for (int i = 0; i < codes.Count; i++)
-			{
-				if (codes[i].opcode == OpCodes.Blt)
+				for (int i = 0; i < codes.Count; i++)
 				{
-					// Make the for loop run only once.
-					codes[i - 1].opcode = OpCodes.Ldc_I4_1;
+					if (codes[i].operand is MethodInfo method && method == AccessTools.Method(typeof(SpawnedItemEntity), "IsQuiverAndNotEmpty"))
+					{
+						codes[i + 2].labels.Add(label);
+						index = i + 1;
+					}
 				}
-			}
 
-			return codes;
+				// Make melee weapons pickable.
+				codesToInsert.Clear();
+				codesToInsert.Add(new CodeInstruction(OpCodes.Brtrue_S, label));
+				codesToInsert.Add(new CodeInstruction(OpCodes.Ldloca_S, 9));
+				codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "IsMeleeWeapon", new Type[] { typeof(MissionWeapon) })));
+				codes.InsertRange(index, codesToInsert);
+
+				startIndex = -1; endIndex = -1;
+				for (int i = 0; i < codes.Count; i++)
+				{
+					if (codes[i].operand is MethodInfo method)
+					{
+						if (method == AccessTools.PropertyGetter(typeof(Vec3), "Length"))
+						{
+							startIndex = Math.Max(0, i - 3);
+						}
+						else if (method == AccessTools.Method(typeof(Agent), "GetMaximumForwardUnlimitedSpeed"))
+						{
+							endIndex = i + 3;
+						}
+					}
+				}
+
+				// Remove the checks for target agent.
+				if (startIndex >= 0 && endIndex > startIndex)
+					codes.RemoveRange(startIndex, endIndex - startIndex + 1);
+
+				for (int i = 0; i < codes.Count; i++)
+				{
+					if (codes[i].opcode == OpCodes.Blt)
+					{
+						// Make the for loop run only once.
+						codes[i - 1].opcode = OpCodes.Ldc_I4_1;
+					}
+				}
+
+				return codes;
+			}
+			catch (Exception ex)
+			{
+				System.IO.File.AppendAllText(
+					System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PMW_patch_error.txt"),
+					"\n[Transpiler2/SelectPickableItem]\n" + ex.ToString() + "\n");
+				return originalInstructions;
+			}
 		}
 
 		private static WeakGameEntity GetClosestPickableEntity(WeakGameEntity[] entities, Agent agent)

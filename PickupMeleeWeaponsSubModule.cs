@@ -16,7 +16,33 @@ namespace PickupMeleeWeapons
 		protected override void OnSubModuleLoad()
 		{
 			_harmony = new Harmony("mod.bannerlord.pickupmeleeweapons");
-			_harmony.PatchAll();
+			var log = new System.Text.StringBuilder();
+			PatchSafe(log, typeof(HumanAIComponent), "DisablePickUpForAgentIfNeeded",
+				postfix: new HarmonyMethod(AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "Postfix")));
+			PatchSafe(log, typeof(HumanAIComponent), "ItemPickupTick",
+				transpiler: new HarmonyMethod(AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "Transpiler1")));
+			PatchSafe(log, typeof(HumanAIComponent), "SelectPickableItem",
+				transpiler: new HarmonyMethod(AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "Transpiler2")));
+			if (log.Length > 0)
+				System.IO.File.WriteAllText(
+					System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PMW_patch_error.txt"),
+					log.ToString());
+		}
+
+		private void PatchSafe(System.Text.StringBuilder log, Type type, string methodName,
+			HarmonyMethod prefix = null, HarmonyMethod postfix = null, HarmonyMethod transpiler = null)
+		{
+			try
+			{
+				var target = AccessTools.Method(type, methodName);
+				if (target == null) { log.AppendLine($"[PMW] NULL target: {type.Name}.{methodName}"); return; }
+				_harmony.Patch(target, prefix: prefix, postfix: postfix, transpiler: transpiler);
+				log.AppendLine($"[PMW] OK: {type.Name}.{methodName}");
+			}
+			catch (Exception ex)
+			{
+				log.AppendLine($"[PMW] FAIL: {type.Name}.{methodName}\n{ex}");
+			}
 		}
 
 		protected override void OnGameStart(Game game, IGameStarter gameStarterObject)
