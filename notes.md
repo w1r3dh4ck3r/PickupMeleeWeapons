@@ -35,9 +35,30 @@ wholesale (`ItemTypeEnum` polearm fix + score tweaks). csproj/SubModule/StanceLo
 RBM, before MapEventNullFix — only the flag flipped, order untouched). Backups: full modpack backup
 (66 mods+Configs), stock DLL → `*.stock-v1.0.7.bak`, LauncherData → `docs/LauncherData_pre-enable_20260809.xml`.
 
-**NOT done / not pushed:** No in-game validation (Mark asleep; the whole point is he tests on wake).
-**No push** — `origin` is upstream's repo; our 9 commits have no fork remote yet (needs Mark's call).
+**NOT done:** No in-game validation (Mark asleep; the whole point is he tests on wake).
+
+**Pushed (2026-08-09, Mark approved on wake):** Created GitHub fork `w1r3dh4ck3r/PickupMeleeWeapons`
+(via `gh repo fork`), renamed `origin`→`upstream`, added the fork as `origin` (SSH), pushed all 12
+local commits (count was 12, not the 9 the earlier handoff said — that number was stale). `main` now
+tracks `origin/main`; working tree clean. Pull future upstream releases with `git fetch upstream`.
 
 **Next (on wake):** launch → read `PMW_patch_error.txt` → see whether the fork registers on 1.4.7.
 Registers → battle-test. Doesn't → revert to stock (one `cp`, see SESSION-STATE) and the registration
 blocker is the target. See `.claude/SESSION-STATE.md` for exact steps + reverts.
+
+## 2026-08-09 (later) — fork pushed + game-start patches instrumented
+
+**Pushed:** Mark approved a fork remote. Created GitHub fork `w1r3dh4ck3r/PickupMeleeWeapons` (`gh repo
+fork`), renamed `origin`→`upstream`, added the fork as `origin` (SSH), pushed all commits. `main` tracks
+`origin/main`. Actual count was 12 commits, not the 9 the prior handoff said (stale number).
+
+**Instrumented battle-start (why):** Review found the diagnostic harness only wrapped the 3
+`HumanAIComponent` patches (module load). `OnGameStart`'s `AddModel(ItemPickupModel)` and the two RBM
+`StanceLogic` patches ran UNGUARDED — on 1.4.7 a shifted RBM internal API would throw at battle start
+(possible CTD) with no PMW log line. Wrapped each in try-catch + `AppendAllText` OK/FAIL/SKIP to the same
+`PMW_patch_error.txt` (append, since `OnSubModuleLoad` `WriteAllText`s it first). Commit `a65f29b`; built
+clean vs 1.4.7 (0/0); redeployed, **deployed DLL sha now `094dc336…`** (was `ab461c16…`), markers verified
+in the DLL. So the diag file now covers BOTH module load and game start.
+
+**Not pushed yet:** commit `a65f29b` + these docs are local only (fork remote exists now, but push needs
+Mark's ok per the gate). Still NO in-game validation — that's the wake-up test.
