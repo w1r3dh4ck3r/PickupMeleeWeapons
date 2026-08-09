@@ -31,9 +31,17 @@ IsSelected flag flipped, load order untouched).
    works is the fallback (revert below).
 
 ## Revert (one line each)
-- **DLL → stock v1.0.7:** `cp ".../Modules/PickupMeleeWeapons/bin/Win64_Shipping_Client/PickupMeleeWeapons.dll.stock-v1.0.7.bak" ".../PickupMeleeWeapons.dll"`
+- **DLL → stock v1.0.7:** `cp "/home/w1r3d/AI/projects/PickupMeleeWeapons/docs/PickupMeleeWeapons.dll.stock-v1.0.7.bak" "/mnt/d/SteamLibrary/steamapps/common/Mount & Blade II Bannerlord/Modules/PickupMeleeWeapons/bin/Win64_Shipping_Client/PickupMeleeWeapons.dll"`
+  (backup sha256 `b7055523…`; it was moved OUT of the module folder so the loader can't scan it.)
 - **Disable again:** flip `<IsSelected>true</IsSelected>` → `false` in PMW's block (line ~160) of
   LauncherData.xml. Pre-enable backup: `docs/LauncherData_pre-enable_20260809.xml`.
+
+## Diagnostic note for the wake-up read
+The fork's runtime IS now upstream's transpiler. So if `PMW_patch_error.txt` shows `[PMW] OK:` on all
+three patches but troops still don't pick up weapons in battle, grep that same file for
+`Ret-scan guard bailed` — the Transpiler2 sentinel writes that line if upstream's hardcoded `i-8`
+offset didn't match 1.4.7's `SelectPickableItem` IL layout (it then returns original IL, so the patch
+loads OK but does nothing). That would point the fix at the Transpiler2 IL, not at registration.
 
 ## Files to touch next
 - `C:/Users/w1r3d/AppData/Local/Temp/PMW_patch_error.txt` (READ on wake — the diagnostic output)
