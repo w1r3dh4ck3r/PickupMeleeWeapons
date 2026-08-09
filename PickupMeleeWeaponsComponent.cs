@@ -1,12 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
-using TaleWorlds.Core;
-using TaleWorlds.Engine;
 using TaleWorlds.Library;
 using TaleWorlds.MountAndBlade;
 
@@ -89,25 +87,8 @@ namespace PickupMeleeWeapons
 			try
 			{
 				List<CodeInstruction> codes = originalInstructions.ToList(), codesToInsert = new List<CodeInstruction>();
-				Label label = il.DefineLabel();
+				Label label = il.DefineLabel(), label2 = il.DefineLabel();
 				int index = 0, startIndex = 0, endIndex = 0;
-
-				for (int i = 0; i < codes.Count; i++)
-				{
-					if (codes[i].operand is Type type && type == typeof(WeakGameEntity))
-					{
-						startIndex = i - 1;
-						endIndex = i;
-						index = i + 1;
-					}
-				}
-
-				// Get the closest pickable entity to the agent instead of the last pickable entity.
-				codesToInsert.Add(new CodeInstruction(OpCodes.Ldarg_0));
-				codesToInsert.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(AgentComponent), "Agent")));
-				codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "GetClosestPickableEntity", new Type[] { typeof(WeakGameEntity[]), typeof(Agent) })));
-				codes.InsertRange(index, codesToInsert);
-				codes.RemoveRange(startIndex, endIndex - startIndex + 1);
 
 				for (int i = 0; i < codes.Count; i++)
 				{
@@ -119,7 +100,6 @@ namespace PickupMeleeWeapons
 				}
 
 				// Make melee weapons pickable.
-				codesToInsert.Clear();
 				codesToInsert.Add(new CodeInstruction(OpCodes.Brtrue_S, label));
 				codesToInsert.Add(new CodeInstruction(OpCodes.Ldloca_S, 9));
 				codesToInsert.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PickupMeleeWeaponsComponent), "IsMeleeWeapon", new Type[] { typeof(MissionWeapon) })));
@@ -145,14 +125,32 @@ namespace PickupMeleeWeapons
 				if (startIndex >= 0 && endIndex > startIndex)
 					codes.RemoveRange(startIndex, endIndex - startIndex + 1);
 
+				// Get the first pickable entity instead of the last one (upstream 1602e6f crash fix:
+				// branch past the scan loop so only the first candidate is taken, dropping the
+				// WeakGameEntity/GetClosestPickableEntity dereference that AVE'd on stale pointers).
+				// Guard the hardcoded i-8 offset — a mismatched IL layout would insert Br_S at the
+				// wrong spot and produce corrupt IL that does NOT throw; bail to original if unmatched.
+				bool retFound = false;
+				index = -1;
 				for (int i = 0; i < codes.Count; i++)
 				{
-					if (codes[i].opcode == OpCodes.Blt)
+					if (codes[i].opcode == OpCodes.Ret && i >= 8)
 					{
-						// Make the for loop run only once.
-						codes[i - 1].opcode = OpCodes.Ldc_I4_1;
+						codes[i - 1].labels.Add(label2);
+						index = i - 8;
+						retFound = true;
 					}
 				}
+
+				if (!retFound || index < 0 || index > codes.Count)
+				{
+					System.IO.File.AppendAllText(
+						System.IO.Path.Combine(System.IO.Path.GetTempPath(), "PMW_patch_error.txt"),
+						"\n[Transpiler2/SelectPickableItem] Ret-scan guard bailed (retFound=" + retFound + ", index=" + index + ", count=" + codes.Count + ") — returning original IL\n");
+					return originalInstructions;
+				}
+
+				codes.Insert(index, new CodeInstruction(OpCodes.Br_S, label2));
 
 				return codes;
 			}
@@ -163,31 +161,6 @@ namespace PickupMeleeWeapons
 					"\n[Transpiler2/SelectPickableItem]\n" + ex.ToString() + "\n");
 				return originalInstructions;
 			}
-		}
-
-		private static WeakGameEntity GetClosestPickableEntity(WeakGameEntity[] entities, Agent agent)
-		{
-			if (entities == null) return default(WeakGameEntity);
-
-			WeakGameEntity best = default(WeakGameEntity);
-			float bestDistSq = float.MaxValue;
-
-			foreach (WeakGameEntity entity in entities)
-			{
-				if (!entity.IsValid) continue;
-				try
-				{
-					float distSq = agent.Position.DistanceSquared(entity.GlobalPosition);
-					if (distSq < bestDistSq)
-					{
-						bestDistSq = distSq;
-						best = entity;
-					}
-				}
-				catch (Exception) { }
-			}
-
-			return best;
 		}
 
 		private static bool IsMeleeWeapon(MissionWeapon weapon) => weapon.Item.PrimaryWeapon.IsMeleeWeapon;

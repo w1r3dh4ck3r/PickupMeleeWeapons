@@ -9,7 +9,9 @@ namespace PickupMeleeWeapons
 		{
 			for (EquipmentIndex index = EquipmentIndex.WeaponItemBeginSlot; index < EquipmentIndex.ExtraWeaponSlot; index++)
 			{
-				if (!agent.SpawnEquipment[index].IsEmpty && agent.SpawnEquipment[index].Item.PrimaryWeapon.IsMeleeWeapon && agent.SpawnEquipment[index].Item.PrimaryWeapon.WeaponClass == weaponClass)
+				EquipmentElement weapon = agent.SpawnEquipment[index];
+
+				if (!weapon.IsEmpty && weapon.Item.PrimaryWeapon.IsMeleeWeapon && weapon.Item.PrimaryWeapon.WeaponClass == weaponClass)
 				{
 					return true;
 				}
@@ -18,18 +20,15 @@ namespace PickupMeleeWeapons
 			return false;
 		}
 
-		public static bool HasSameTypeOfMeleeWeaponCurrently(Agent agent, WeaponComponentData otherWeapon)
+		public static bool HasSameTypeOfMeleeWeaponCurrently(Agent agent, ItemObject.ItemTypeEnum itemType)
 		{
 			for (EquipmentIndex index = EquipmentIndex.WeaponItemBeginSlot; index < EquipmentIndex.ExtraWeaponSlot; index++)
 			{
-				if (!agent.Equipment[index].IsEmpty)
-				{
-					WeaponComponentData equippedWeapon = agent.Equipment[index].Item.PrimaryWeapon;
+				MissionWeapon weapon = agent.Equipment[index];
 
-					if (equippedWeapon.IsMeleeWeapon && ((equippedWeapon.IsOneHanded && otherWeapon.IsOneHanded) || (equippedWeapon.IsTwoHanded && otherWeapon.IsTwoHanded) || (equippedWeapon.IsPolearm && otherWeapon.IsPolearm)))
-					{
-						return true;
-					}
+				if (!weapon.IsEmpty && weapon.Item.PrimaryWeapon.IsMeleeWeapon && weapon.Item.ItemType == itemType)
+				{
+					return true;
 				}
 			}
 

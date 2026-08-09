@@ -15,11 +15,11 @@ namespace PickupMeleeWeapons
 			if (PickupMeleeWeaponsHelper.HadSameTypeOfMeleeWeaponOnSpawn(agent, item.WeaponCopy.Item.PrimaryWeapon.WeaponClass))
 			{
 				// Make agents prefer the same types of weapons they spawned with when picking up melee weapons.
-				return 120f;
+				return 110f;
 			}
 			else if (item.WeaponCopy.Item.PrimaryWeapon.IsMeleeWeapon)
 			{
-				return 110f;
+				return 100f;
 			}
 
 			return _model.GetItemScoreForAgent(item, agent);
@@ -40,7 +40,7 @@ namespace PickupMeleeWeapons
 			if (item.WeaponCopy.Item.PrimaryWeapon.IsMeleeWeapon)
 			{
 				// Ensure that agents do not pick up another melee weapon that shares the same type as a weapon they already have.
-				return agent.Equipment[slotToPickUp].IsEmpty && PickupMeleeWeaponsHelper.HasLostMeleeWeapon(agent) && !PickupMeleeWeaponsHelper.HasSameTypeOfMeleeWeaponCurrently(agent, item.WeaponCopy.Item.PrimaryWeapon);
+				return agent.Equipment[slotToPickUp].IsEmpty && PickupMeleeWeaponsHelper.HasLostMeleeWeapon(agent) && !PickupMeleeWeaponsHelper.HasSameTypeOfMeleeWeaponCurrently(agent, item.WeaponCopy.Item.ItemType);
 			}
 
 			return _model.IsItemAvailableForAgent(item, agent, slotToPickUp);
