@@ -36,7 +36,7 @@ are now each in try-catch and append `[PMW] OK/FAIL/SKIP` to the same `PMW_patch
    works is the fallback (revert below).
 
 ## Revert (one line each)
-- **DLL → stock v1.0.7:** `cp "/home/w1r3d/AI/projects/PickupMeleeWeapons/docs/PickupMeleeWeapons.dll.stock-v1.0.7.bak" "/mnt/d/SteamLibrary/steamapps/common/Mount & Blade II Bannerlord/Modules/PickupMeleeWeapons/bin/Win64_Shipping_Client/PickupMeleeWeapons.dll"`
+- **DLL → stock v1.0.7:** `cp "/home/w1r3d/AI/projects/Modding/Bannerlord/mods/PickupMeleeWeapons/docs/PickupMeleeWeapons.dll.stock-v1.0.7.bak" "/mnt/d/SteamLibrary/steamapps/common/Mount & Blade II Bannerlord/Modules/PickupMeleeWeapons/bin/Win64_Shipping_Client/PickupMeleeWeapons.dll"`
   (backup sha256 `b7055523…`; it was moved OUT of the module folder so the loader can't scan it.)
 - **Disable again:** flip `<IsSelected>true</IsSelected>` → `false` in PMW's block (line ~160) of
   LauncherData.xml. Pre-enable backup: `docs/LauncherData_pre-enable_20260809.xml`.
